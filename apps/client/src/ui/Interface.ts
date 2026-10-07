@@ -46,6 +46,8 @@ const messages: Record<string, string> = {
   INVALID_CODE: 'Use o código completo, no formato BR-XXXXXX.',
   CONNECTION_LOST:
     'A conexão foi perdida. Você pode criar ou entrar em outra sala.',
+  CONNECTION_ERROR:
+    'O Supabase não respondeu. Aguarde alguns segundos e tente novamente.',
   AUTH_REQUIRED: 'Sua sessão expirou. Recarregue o jogo para entrar novamente.',
   AUTH_UNAVAILABLE:
     'Não foi possível criar sua sessão. Confira o acesso anônimo no Supabase.',
@@ -456,9 +458,9 @@ function connection(value: ConnectionStatus): void {
       : value === 'CONNECTED'
         ? network.state?.persistence === 'error'
           ? 'PROGRESSO NÃO SALVO'
-          : network.state?.persistence === 'online'
-            ? 'ONLINE / PROGRESSO SALVO'
-            : 'CONECTADO / SESSÃO LOCAL'
+          : network.state?.code !== 'SOLO'
+            ? 'ONLINE / SALA ATIVA'
+            : 'SOLO / SESSÃO LOCAL'
         : value === 'CONNECTING'
           ? 'CONECTANDO...'
           : 'BOMBRUSH v0.2';

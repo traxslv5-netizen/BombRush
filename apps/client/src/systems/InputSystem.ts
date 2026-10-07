@@ -37,7 +37,7 @@ export class InputSystem {
   };
   update(dt: number): void {
     this.elapsed += dt;
-    if (this.elapsed < 33) return;
+    if (this.elapsed < 50) return;
     this.elapsed = 0;
     const k = this.keys,
       pad = navigator.getGamepads?.()[0];
