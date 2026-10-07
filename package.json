@@ -1,0 +1,43 @@
+{
+  "name": "bombrush",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node tools/dev.mjs",
+    "dev:server": "tsx watch apps/server/src/index.ts",
+    "dev:client": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build && esbuild apps/server/src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server/index.js",
+    "start": "node dist/server/index.js",
+    "test": "vitest run",
+    "test:browser": "node tools/browser-smoke.mjs",
+    "test:visual": "node --import tsx tools/visual-review.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write apps shared tools tests *.json *.ts *.md",
+    "assets": "node tools/process-assets.mjs"
+  },
+  "dependencies": {
+    "@colyseus/core": "^0.17.52",
+    "@colyseus/sdk": "^0.17.0",
+    "@colyseus/ws-transport": "^0.17.0",
+    "@supabase/supabase-js": "^2.117.2",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "phaser": "^4.0.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.56.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "sharp": "^0.35.5",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^7.0.0",
+    "vitest": "^5.0.3"
+  }
+}
