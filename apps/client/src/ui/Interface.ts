@@ -6,6 +6,7 @@ import { COLORS } from '../../../../shared/src/config/game.config';
 import { STAGES } from '../../../../shared/src/config/stages.config';
 import type { Color, Snapshot } from '../../../../shared/src/types';
 const root = document.getElementById('interface')!;
+const ASSET_BASE = import.meta.env.BASE_URL;
 const colorNames: Record<Color, string> = {
   red: 'Vermelho',
   blue: 'Azul',
@@ -20,7 +21,7 @@ const esc = (s: string) =>
         c
       ]!,
   );
-const icon = (name: string) => `<img src="/game/items/${name}.png" alt=""/>`;
+const icon = (name: string) => `<img src="${ASSET_BASE}game/items/${name}.png" alt=""/>`;
 let screen = '',
   selected: Color = 'red',
   paused = false,
@@ -63,7 +64,7 @@ function logo(): string {
   return `<div class="game-logo" aria-label="BombRush"><span>BOMB</span><b>RUSH</b><i></i></div>`;
 }
 function ambient(): string {
-  return `<div class="menu-world" aria-hidden="true"><img src="/game/maps/garden.png"/><div class="world-shade"></div>${Array.from({ length: 14 }, (_, i) => `<i style="--n:${i}"></i>`).join('')}</div>`;
+  return `<div class="menu-world" aria-hidden="true"><img src="${ASSET_BASE}game/maps/garden.png"/><div class="world-shade"></div>${Array.from({ length: 14 }, (_, i) => `<i style="--n:${i}"></i>`).join('')}</div>`;
 }
 function status(): string {
   return `<div id="connection" class="connection" data-state="${network.status}">${svg('network')}<span>${network.status === 'CONNECTED' ? 'CONECTADO' : network.status === 'RECONNECTING' ? 'RECONECTANDO' : 'BOMBRUSH v0.2'}</span></div>`;
@@ -120,7 +121,7 @@ export function menu(message = ''): void {
   paused = false;
   autoSolo = false;
   document.body.className = 'menu';
-  root.innerHTML = `${ambient()}<div class="menu-brand">${logo()}<p>ACENDA O PAVIO. ENTRE NA ARENA.</p></div><div class="menu-character"><img src="/game/players/red/idle_01.png" alt=""/><img class="friend" src="/game/players/blue/idle_02.png" alt=""/></div><nav class="main-menu" aria-label="Menu principal"><span class="overline">CAMPANHA DE ARENA / 1–4 JOGADORES</span><button id="play" class="menu-button primary">${svg('play')}<span>JOGAR<small>Uma aventura. Cinco arenas.</small></span>${svg('arrow')}</button><button id="multiplayer" class="menu-button">${svg('network')}<span>MULTIPLAYER<small>Junte a sua turma</small></span>${svg('arrow')}</button><button id="settings" class="menu-button">${svg('settings')}<span>CONFIGURAÇÕES</span></button><p id="error" role="status">${message ? esc(messages[message] || message) : ''}</p></nav><footer class="menu-footer"><span>WASD / SETAS <b>MOVER</b> &nbsp; ESPAÇO <b>BOMBA</b> &nbsp; E <b>REMOTE</b></span>${status()}</footer><div class="build-label">VERTICAL SLICE <b>02</b></div><div id="loading-status"></div>`;
+  root.innerHTML = `${ambient()}<div class="menu-brand">${logo()}<p>ACENDA O PAVIO. ENTRE NA ARENA.</p></div><div class="menu-character"><img src="${ASSET_BASE}game/players/red/idle_01.png" alt=""/><img class="friend" src="${ASSET_BASE}game/players/blue/idle_02.png" alt=""/></div><nav class="main-menu" aria-label="Menu principal"><span class="overline">CAMPANHA DE ARENA / 1–4 JOGADORES</span><button id="play" class="menu-button primary">${svg('play')}<span>JOGAR<small>Uma aventura. Cinco arenas.</small></span>${svg('arrow')}</button><button id="multiplayer" class="menu-button">${svg('network')}<span>MULTIPLAYER<small>Junte a sua turma</small></span>${svg('arrow')}</button><button id="settings" class="menu-button">${svg('settings')}<span>CONFIGURAÇÕES</span></button><p id="error" role="status">${message ? esc(messages[message] || message) : ''}</p></nav><footer class="menu-footer"><span>WASD / SETAS <b>MOVER</b> &nbsp; ESPAÇO <b>BOMBA</b> &nbsp; E <b>REMOTE</b></span>${status()}</footer><div class="build-label">VERTICAL SLICE <b>02</b></div><div id="loading-status"></div>`;
   bind('play', () => playMenu());
   bind('multiplayer', () => playMenu(true));
   bind('settings', () => openSettings());
@@ -129,7 +130,7 @@ export function menu(message = ''): void {
 function playMenu(multiplayer = false): void {
   screen = 'play';
   document.body.className = 'menu';
-  root.innerHTML = `${ambient()}<div class="sub-header">${logo()}<button id="back" class="icon-button">${svg('back')} VOLTAR</button></div><section class="choice-menu"><span class="overline">${multiplayer ? 'JOGUE JUNTO' : 'ESCOLHA SUA AVENTURA'}</span><h1>Todo pavio tem<br/>um começo.</h1><div class="mode-options">${multiplayer ? '' : `<button id="solo" class="mode-option"><img src="/game/players/red/placeBomb_01.png" alt=""/><span>SOLO<small>A campanha é toda sua</small></span>${svg('arrow')}</button>`}<button id="create-view" class="mode-option"><img src="/game/players/blue/idle_02.png" alt=""/><span>CRIAR SALA<small>Convide até três amigos</small></span>${svg('arrow')}</button><button id="join-view" class="mode-option"><img src="/game/players/purple/walk_02.png" alt=""/><span>ENTRAR NA SALA<small>Use o código da sua turma</small></span>${svg('arrow')}</button></div></section><footer class="menu-footer"><span>SEM CONTA. SEM COMPLICAÇÃO.</span>${status()}</footer>`;
+  root.innerHTML = `${ambient()}<div class="sub-header">${logo()}<button id="back" class="icon-button">${svg('back')} VOLTAR</button></div><section class="choice-menu"><span class="overline">${multiplayer ? 'JOGUE JUNTO' : 'ESCOLHA SUA AVENTURA'}</span><h1>Todo pavio tem<br/>um começo.</h1><div class="mode-options">${multiplayer ? '' : `<button id="solo" class="mode-option"><img src="${ASSET_BASE}game/players/red/placeBomb_01.png" alt=""/><span>SOLO<small>A campanha é toda sua</small></span>${svg('arrow')}</button>`}<button id="create-view" class="mode-option"><img src="${ASSET_BASE}game/players/blue/idle_02.png" alt=""/><span>CRIAR SALA<small>Convide até três amigos</small></span>${svg('arrow')}</button><button id="join-view" class="mode-option"><img src="${ASSET_BASE}game/players/purple/walk_02.png" alt=""/><span>ENTRAR NA SALA<small>Use o código da sua turma</small></span>${svg('arrow')}</button></div></section><footer class="menu-footer"><span>SEM CONTA. SEM COMPLICAÇÃO.</span>${status()}</footer>`;
   bind('back', () => menu());
   bind('solo', () => setup('solo'));
   bind('create-view', () => setup('create'));
@@ -137,7 +138,7 @@ function playMenu(multiplayer = false): void {
 }
 function setup(mode: 'solo' | 'create' | 'join'): void {
   screen = 'setup';
-  root.innerHTML = `${ambient()}<div class="sub-header">${logo()}<button id="back" class="icon-button">${svg('back')} VOLTAR</button></div><section class="setup-screen"><div class="setup-art"><img id="setup-portrait" src="/game/players/${selected}/idle_02.png" alt="Personagem escolhido"/><div class="pedestal"></div><span>SEU LUGAR NA ARENA</span></div><form id="setup-form" class="setup-form"><span class="overline">${mode === 'solo' ? 'CAMPANHA SOLO' : mode === 'join' ? 'ENCONTRE SUA TURMA' : 'NOVA AVENTURA'}</span><h1>${mode === 'join' ? 'Entrar na sala' : mode === 'solo' ? 'Pronto para começar?' : 'Criar sala'}</h1>${mode === 'join' ? '<label for="room-code">CÓDIGO DA SALA</label><input id="room-code" placeholder="BR-XXXXXX" maxlength="9" required autocomplete="off"/>' : ''}<label for="nickname">SEU NICKNAME</label><input id="nickname" placeholder="Como vamos te chamar?" maxlength="16" value="${esc(localStorage.getItem('bombrush-name') || '')}" required autocomplete="nickname"/>${mode !== 'join' ? `<label>ESCOLHA SUA COR</label>${colors(selected)}<p class="private-note">${svg('lock')} SALA PRIVADA <span>Apenas convidados com o código</span></p>` : ''}<button class="primary" id="${mode === 'join' ? 'join' : 'create'}" type="submit">${mode === 'join' ? 'ENTRAR' : mode === 'solo' ? 'INICIAR AVENTURA' : 'CRIAR SALA'} ${svg('arrow')}</button><p id="error" role="status"></p><p class="setup-hint">${mode === 'join' ? 'Cada cor pertence a um jogador. Você escolhe a sua no lobby.' : 'Explosões atingem todos. Proteja a turma e cuide do seu pavio.'}</p></form></section><footer class="menu-footer"><span>BOMBRUSH / CAMPANHA 01</span>${status()}</footer>`;
+  root.innerHTML = `${ambient()}<div class="sub-header">${logo()}<button id="back" class="icon-button">${svg('back')} VOLTAR</button></div><section class="setup-screen"><div class="setup-art"><img id="setup-portrait" src="${ASSET_BASE}game/players/${selected}/idle_02.png" alt="Personagem escolhido"/><div class="pedestal"></div><span>SEU LUGAR NA ARENA</span></div><form id="setup-form" class="setup-form"><span class="overline">${mode === 'solo' ? 'CAMPANHA SOLO' : mode === 'join' ? 'ENCONTRE SUA TURMA' : 'NOVA AVENTURA'}</span><h1>${mode === 'join' ? 'Entrar na sala' : mode === 'solo' ? 'Pronto para começar?' : 'Criar sala'}</h1>${mode === 'join' ? '<label for="room-code">CÓDIGO DA SALA</label><input id="room-code" placeholder="BR-XXXXXX" maxlength="9" required autocomplete="off"/>' : ''}<label for="nickname">SEU NICKNAME</label><input id="nickname" placeholder="Como vamos te chamar?" maxlength="16" value="${esc(localStorage.getItem('bombrush-name') || '')}" required autocomplete="nickname"/>${mode !== 'join' ? `<label>ESCOLHA SUA COR</label>${colors(selected)}<p class="private-note">${svg('lock')} SALA PRIVADA <span>Apenas convidados com o código</span></p>` : ''}<button class="primary" id="${mode === 'join' ? 'join' : 'create'}" type="submit">${mode === 'join' ? 'ENTRAR' : mode === 'solo' ? 'INICIAR AVENTURA' : 'CRIAR SALA'} ${svg('arrow')}</button><p id="error" role="status"></p><p class="setup-hint">${mode === 'join' ? 'Cada cor pertence a um jogador. Você escolhe a sua no lobby.' : 'Explosões atingem todos. Proteja a turma e cuide do seu pavio.'}</p></form></section><footer class="menu-footer"><span>BOMBRUSH / CAMPANHA 01</span>${status()}</footer>`;
   bind('back', () => playMenu());
   bindColors();
   document.getElementById('setup-form')!.addEventListener('submit', (e) => {
@@ -201,7 +202,7 @@ function lobby(s: Snapshot): void {
     { length: 4 },
     (_, i) => {
       const p = s.players[i];
-      return `<article class="lobby-slot ${p?.color ?? 'vacant'} ${p?.ready ? 'is-ready' : ''}"><div class="slot-top"><span>PLAYER 0${i + 1}</span>${p?.id === s.host ? `<b>${svg('crown')} HOST</b>` : ''}</div><div class="slot-art"><img src="/game/players/${p?.color ?? COLORS[i]}/${p?.ready ? 'idle_02' : 'idle_01'}.png" alt="${p ? colorNames[p.color] : ''}"/><div class="pedestal"></div></div><h2>${p ? esc(p.nickname) : 'ESPAÇO LIVRE'}</h2><span class="slot-color">${p ? colorNames[p.color] : 'Aguardando jogador'}</span><div class="slot-status">${p ? `${svg(!p.connected ? 'network' : p.ready ? 'check' : 'clock')} ${!p.connected ? 'RECONECTANDO' : p.ready ? 'PRONTO' : 'PREPARANDO'}` : 'CONVIDE UM AMIGO'}</div>${p?.id === network.id ? '<span class="local-tag">SEU PERSONAGEM</span>' : ''}</article>`;
+      return `<article class="lobby-slot ${p?.color ?? 'vacant'} ${p?.ready ? 'is-ready' : ''}"><div class="slot-top"><span>PLAYER 0${i + 1}</span>${p?.id === s.host ? `<b>${svg('crown')} HOST</b>` : ''}</div><div class="slot-art"><img src="${ASSET_BASE}game/players/${p?.color ?? COLORS[i]}/${p?.ready ? 'idle_02' : 'idle_01'}.png" alt="${p ? colorNames[p.color] : ''}"/><div class="pedestal"></div></div><h2>${p ? esc(p.nickname) : 'ESPAÇO LIVRE'}</h2><span class="slot-color">${p ? colorNames[p.color] : 'Aguardando jogador'}</span><div class="slot-status">${p ? `${svg(!p.connected ? 'network' : p.ready ? 'check' : 'clock')} ${!p.connected ? 'RECONECTANDO' : p.ready ? 'PRONTO' : 'PREPARANDO'}` : 'CONVIDE UM AMIGO'}</div>${p?.id === network.id ? '<span class="local-tag">SEU PERSONAGEM</span>' : ''}</article>`;
     },
   ).join(
     '',
@@ -291,7 +292,7 @@ function renderOverlay(s: Snapshot): void {
   if (node.dataset.key === key) return;
   node.dataset.key = key;
   node.innerHTML = title
-    ? `<div class="scrim"><section class="result"><span class="overline">${kicker}</span><img src="/game/players/red/${image}.png" alt=""/><h1>${title}</h1><p>${sub}</p>${action}</section></div>`
+    ? `<div class="scrim"><section class="result"><span class="overline">${kicker}</span><img src="${ASSET_BASE}game/players/red/${image}.png" alt=""/><h1>${title}</h1><p>${sub}</p>${action}</section></div>`
     : '';
   bind('resume', togglePause);
   bind('pause-settings', () => openSettings());
@@ -381,7 +382,7 @@ export function updateUI(s: Snapshot): void {
   if (signature !== lastHud) {
     lastHud = signature;
     document.getElementById('player-hud')!.innerHTML =
-      `<div class="portrait ${p.color}"><img src="/game/players/${p.color}/idle_01.png" alt=""/></div><div class="player-details"><strong>${esc(p.nickname)}</strong><div class="lives">${Array.from({ length: 3 }, (_, i) => svg('life', i < p.lives ? 'filled' : 'empty')).join('')}</div><div class="stats"><span>${icon('bomb_up')}<b>${p.maxBombs - p.activeBombs}/${p.maxBombs}</b></span><span>${icon('fire_up')}<b>${p.blastRange}</b></span><span>${icon('speed_up')}<b>${Math.round((p.speed - 3.65) / 0.4) + 1}</b></span></div></div><div class="powers">${[
+      `<div class="portrait ${p.color}"><img src="${ASSET_BASE}game/players/${p.color}/idle_01.png" alt=""/></div><div class="player-details"><strong>${esc(p.nickname)}</strong><div class="lives">${Array.from({ length: 3 }, (_, i) => svg('life', i < p.lives ? 'filled' : 'empty')).join('')}</div><div class="stats"><span>${icon('bomb_up')}<b>${p.maxBombs - p.activeBombs}/${p.maxBombs}</b></span><span>${icon('fire_up')}<b>${p.blastRange}</b></span><span>${icon('speed_up')}<b>${Math.round((p.speed - 3.65) / 0.4) + 1}</b></span></div></div><div class="powers">${[
         ['kick', p.canKick],
         ['remote', p.hasRemote],
         ['shield', p.hasShield],

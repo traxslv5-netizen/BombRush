@@ -39,7 +39,7 @@ export class GameScene extends Phaser.Scene {
     });
     Object.entries(manifest)
       .filter(([key]) => !key.startsWith('maps/') && !key.startsWith('hud/'))
-      .forEach(([key, url]) => this.load.image(key, url));
+      .forEach(([key, url]) => this.load.image(key, `${import.meta.env.BASE_URL}${url.replace(/^\//, '')}`));
   }
   create(): void {
     registerAnimations(this, manifest);
