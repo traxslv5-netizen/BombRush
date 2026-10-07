@@ -9,11 +9,13 @@ const server = new Server({
   transport: new WebSocketTransport({ maxPayload: 16384 }),
   greet: false,
   express: (app) => {
-    app.use('/rooms', (_req, res, next) => {
+    app.use((_req, res, next) => {
       res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       res.setHeader('Cache-Control', 'no-store');
       next();
     });
+    app.get('/health', (_req, res) => res.json({ ok: true, service: 'bombrush' }));
     app.get('/rooms/:code', (req, res) => {
       const code = String(req.params.code).toUpperCase();
       if (!/^BR-[A-Z0-9]{6}$/.test(code)) {
