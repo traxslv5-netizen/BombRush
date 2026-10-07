@@ -111,7 +111,7 @@ function bindColors(inLobby = false): void {
         const portrait = document.getElementById(
           'setup-portrait',
         ) as HTMLImageElement;
-        if (portrait) portrait.src = `/game/players/${color}/idle_02.png`;
+        if (portrait) portrait.src = `${ASSET_BASE}game/players/${color}/idle_02.png`;
       }
     }),
   );
