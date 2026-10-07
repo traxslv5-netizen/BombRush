@@ -170,7 +170,7 @@ async function connect(mode: string): Promise<void> {
   localStorage.setItem('bombrush-name', name);
   try {
     autoSolo = mode === 'solo';
-    await network.connect(name, code, selected);
+    await network.connect(name, code, selected, mode === 'solo');
     if (autoSolo) network.send('ready');
   } catch (e) {
     error(e instanceof Error ? e.message : 'CONNECTION_ERROR');
