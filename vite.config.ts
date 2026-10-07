@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite';
 export default defineConfig({
   root: 'apps/client',
-  base: process.env.GITHUB_ACTIONS ? '/BombRush/' : '/',
+  base:
+    process.env.VITE_BASE_PATH ||
+    (process.env.GITHUB_ACTIONS ? '/BombRush/' : '/'),
   publicDir: '../../assets',
   envDir:'../..',
   server: {

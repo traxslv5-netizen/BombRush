@@ -1,0 +1,422 @@
+[
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_03-1.png",
+    "prefix": "players/red",
+    "frames": 11,
+    "alpha": true,
+    "canvas": [
+      256,
+      384
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_03-2.png",
+    "prefix": "players/blue",
+    "frames": 11,
+    "alpha": true,
+    "canvas": [
+      256,
+      384
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_04-3.png",
+    "prefix": "players/purple",
+    "frames": 11,
+    "alpha": true,
+    "canvas": [
+      256,
+      384
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_05-4.png",
+    "prefix": "players/yellow",
+    "frames": 11,
+    "alpha": true,
+    "canvas": [
+      256,
+      384
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_06-5.png",
+    "prefix": "enemies/slime",
+    "frames": 6,
+    "alpha": true,
+    "canvas": [
+      320,
+      300
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_06-5.png",
+    "prefix": "enemies/windup",
+    "frames": 6,
+    "alpha": true,
+    "canvas": [
+      320,
+      300
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_07-6.png",
+    "prefix": "enemies/fire_spirit",
+    "frames": 6,
+    "alpha": true,
+    "canvas": [
+      320,
+      300
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_07-6.png",
+    "prefix": "enemies/ghost",
+    "frames": 6,
+    "alpha": true,
+    "canvas": [
+      320,
+      300
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_08-7.png",
+    "prefix": "boss/bomb_forge",
+    "frames": 8,
+    "alpha": true,
+    "canvas": [
+      384,
+      440
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_09-8.png",
+    "prefix": "items",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      160,
+      160
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_09-8.png",
+    "prefix": "items",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      160,
+      160
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_09-8.png",
+    "prefix": "items",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      160,
+      160
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_09-8.png",
+    "prefix": "items",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      160,
+      160
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_09-8.png",
+    "prefix": "items",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      160,
+      160
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_09-8.png",
+    "prefix": "items",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      160,
+      160
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "bombs",
+    "frames": 4,
+    "alpha": true,
+    "canvas": [
+      192,
+      224
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/explosion",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      256,
+      256
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/explosion",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      256,
+      256
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/explosion",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      256,
+      256
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/explosion",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      256,
+      256
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/explosion",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      256,
+      256
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/explosion",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      256,
+      256
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/explosion",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      256,
+      256
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/block_break",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      192,
+      192
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/smoke",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      192,
+      192
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/smoke_end",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      192,
+      192
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/stun",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      192,
+      192
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_10-9.png",
+    "prefix": "effects/pickup",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      192,
+      192
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "tiles",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "tiles",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "tiles",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "tiles",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "tiles",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "tiles",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "tiles",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "tiles",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "hud",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      800,
+      180
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "maps",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      800,
+      480
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "maps",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      800,
+      480
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "maps",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      800,
+      480
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "maps",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      800,
+      480
+    ]
+  },
+  {
+    "sheet": "Imagem do ChatGPT 7 de out. de 2026, 00_17_11-10.png",
+    "prefix": "maps",
+    "frames": 1,
+    "alpha": true,
+    "canvas": [
+      800,
+      480
+    ]
+  }
+]
