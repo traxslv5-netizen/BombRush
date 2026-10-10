@@ -7,6 +7,7 @@
 - Fases/reconexão: faltavam confirmação de mapa carregado, versões de fase e ordenação dos snapshots. O reingresso era rejeitado por `MATCH_STARTED` antes de reconhecer o jogador existente. Agora a autoridade mantém uma revisão de fase, espera os clientes em `SYNCING`, descarta snapshots antigos e comandos da fase anterior e restaura a identidade/fase atual ao reconectar.
 - Ciclo de vida: retorno ao menu, encerramento do host, cancelamento, timers, worker e canais são limpos; envio desconectado não deve gerar uma sequência de requisições REST. O relógio do host usa worker para reduzir efeitos da troca de aba. Salas antigas e novas usam versões separadas do protocolo.
 - Apresentação: reinício também invalida o mapa, efeitos/tweens/entidades anteriores são limpos, HUD e overlay usam a fase atual. Foram removidos flashes de tela inteira das explosões e do boss.
+- Publicação: o teste final no Pages encontrou dois deployments com layouts diferentes, causando 404 no worker e partida parada no início. Actions e publicação por branch agora usam o mesmo caminho `/BombRush/docs/`, preservam bundles antigos e publicam o worker. Falha ou bloqueio do worker ativa um relógio alternativo para não congelar a simulação.
 
 ## Arquivos principais
 
@@ -14,7 +15,7 @@
 
 ## Evidência de testes
 
-- 41 testes Vitest: aprovados. Incluem cinco arenas, spawns distintos/seguros, preservação de identidade/upgrades, confirmação de mapas com 2/3/4 jogadores, timeout, conclusão duplicada e reinício; integração com sockets Colyseus reais.
+- 44 testes Vitest: aprovados. Incluem cinco arenas, spawns distintos/seguros, preservação de identidade/upgrades, confirmação de mapas com 2/3/4 jogadores, timeout, conclusão duplicada e reinício; integração com sockets Colyseus reais e três modos de falha do worker de simulação.
 - Quatro contextos Chromium separados usando Supabase real: nickname `TRAX 2026`, espaço/Backspace/Ctrl+A/Home/End/Delete, WASD/setas/combinações, evento blur, foco editável, bombas, pronto/início, Stage 1 → 2 → 3 → 4 → 5, identidade na reconexão da Stage 3 por reload e queda do socket, snapshot atrasado, vitória/reinício, saída/host encerrado e duas sessões Solo sucessivas. Todos aprovados, sem erros de console capturados.
 - Os testes de transição preparam objetivos e derrota do boss na autoridade para alcançar as condições de fim. Só a autoridade executa a transição; os quatro clientes recebem e renderizam o estado real pelo Supabase, sem refresh para mudar de fase. Isso testa sincronização; não equivale a uma campanha inteira concluída manualmente.
 - Relatório automático local: `test-results/cooperative-browser.json`; capturas `test-results/coop-host-stage5.png` e `test-results/coop-guest-stage5.png`.

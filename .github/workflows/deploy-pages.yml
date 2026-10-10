@@ -37,16 +37,19 @@ jobs:
       - name: Build client
         env:
           GITHUB_ACTIONS: 'true'
+          VITE_BASE_PATH: /BombRush/docs/
           VITE_SUPABASE_URL: https://qgxcloeodrgozalwrwux.supabase.co
           VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFneGNsb2VvZHJnb3phbHdyd3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzNDMxOTMsImV4cCI6MjEwNjkxOTE5M30.6svImHasCi_NFbXZt7dkuLNMiewLDIsVcRgrwOUSsb4
           VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
         run: npm run build
+      - name: Assemble canonical Pages layout
+        run: node tools/assemble-pages.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/client
+          path: dist/pages
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

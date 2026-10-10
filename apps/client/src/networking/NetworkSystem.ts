@@ -28,6 +28,7 @@ export class NetworkSystem {
   private localGame: Game | null = null;
   private localTimer: ReturnType<typeof setInterval> | undefined;
   private clock: Worker | undefined;
+  private clockStartup: ReturnType<typeof setTimeout> | undefined;
   private peerWatchTimer: ReturnType<typeof setInterval> | undefined;
   private localSessionId = '';
   private localTicks = 0;
@@ -177,9 +178,17 @@ export class NetworkSystem {
     this.lastInput.set(this.localSessionId, Date.now());
   }
 
-  private startTicks(): void {
+  private stopTicks(): void {
     clearInterval(this.localTimer);
+    this.localTimer = undefined;
+    clearTimeout(this.clockStartup);
+    this.clockStartup = undefined;
     this.clock?.terminate();
+    this.clock = undefined;
+  }
+
+  private startTicks(): void {
+    this.stopTicks();
     this.localTicks = 0;
     let lastTickAt = performance.now();
     const tick = () => {
@@ -211,13 +220,29 @@ export class NetworkSystem {
       )
         this.publishLocal(this.peerHost);
     };
+    const fallback = () => {
+      this.stopTicks();
+      lastTickAt = performance.now();
+      this.localTimer = setInterval(tick, 1000 / 30);
+    };
     if (typeof Worker !== 'undefined') {
-      this.clock = new Worker(
-        new URL('./SimulationClock.ts', import.meta.url),
-        { type: 'module' },
-      );
-      this.clock.onmessage = tick;
-    } else this.localTimer = setInterval(tick, 1000 / 30);
+      try {
+        this.clock = new Worker(
+          new URL('./SimulationClock.ts', import.meta.url),
+          { type: 'module' },
+        );
+        this.clock.onmessage = () => {
+          clearTimeout(this.clockStartup);
+          this.clockStartup = undefined;
+          tick();
+        };
+        this.clock.onerror = fallback;
+        // Failed worker downloads may not report an error on every browser.
+        this.clockStartup = setTimeout(fallback, 1500);
+      } catch {
+        fallback();
+      }
+    } else fallback();
   }
 
   private publishLocal(broadcast = false): void {
@@ -531,10 +556,8 @@ export class NetworkSystem {
     const channel = this.channel;
     this.channel = null;
     this.subscribed = false;
-    clearInterval(this.localTimer);
+    this.stopTicks();
     clearInterval(this.peerWatchTimer);
-    this.clock?.terminate();
-    this.clock = undefined;
     this.localGame = null;
     this.state = null;
     if (channel && supabase)
@@ -572,10 +595,7 @@ export class NetworkSystem {
     this.intentional = true;
     clearTimeout(this.connectTimeout);
     this.connectTimeout = undefined;
-    clearInterval(this.localTimer);
-    this.localTimer = undefined;
-    this.clock?.terminate();
-    this.clock = undefined;
+    this.stopTicks();
     clearInterval(this.peerWatchTimer);
     this.peerWatchTimer = undefined;
     this.connectResolve = null;
