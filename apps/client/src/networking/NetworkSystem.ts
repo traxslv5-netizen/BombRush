@@ -2,6 +2,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Snapshot, Input, Color } from '../../../../shared/src/types';
 import { Game } from '../../../server/src/state/Game';
 import { supabase } from './SupabaseClient';
+import { RemoteMotion } from './RemoteMotion';
 
 export type ConnectionStatus =
   'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'ERROR';
@@ -23,6 +24,9 @@ const COLORS: Color[] = ['red', 'blue', 'purple', 'yellow'];
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 export class NetworkSystem {
+  readonly remoteMotion = new RemoteMotion();
+  readonly debug = { rttMs: 0, snapshotIntervalMs: 0, snapshots: 0 };
+  private pingSentAt = 0;
   readonly endpoint = 'supabase-realtime';
   private channel: RealtimeChannel | null = null;
   private localGame: Game | null = null;
@@ -206,6 +210,7 @@ export class NetworkSystem {
       const now = performance.now();
       game.tick(Math.min(0.1, (now - lastTickAt) / 1000));
       lastTickAt = now;
+      this.remoteMotion.push(game.state, now, true);
       // Publish room changes even when a client is waiting to acknowledge a new map.
       // Broadcast delivery is charged per subscriber. Keep four-player rooms
       // within the free Realtime throughput while keeping two-player updates at 15Hz.
@@ -248,6 +253,7 @@ export class NetworkSystem {
   private publishLocal(broadcast = false): void {
     if (!this.localGame) return;
     this.state = this.localGame.state;
+    this.remoteMotion.push(this.state, performance.now(), true);
     this.onSnapshot(this.localGame.state);
     if (broadcast) void this.sendPeer('snapshot', this.localGame.state);
   }
@@ -269,6 +275,8 @@ export class NetworkSystem {
           (p) => p.id === message.from,
         )!;
         p.connected = true;
+        if (typeof message.payload === 'number')
+          void this.sendPeer('pong', message.payload, message.from);
         return;
       }
       if (message.type === 'leave') {
@@ -283,6 +291,11 @@ export class NetworkSystem {
     }
 
     if (this.hostId && message.from !== this.hostId) return;
+    if (message.type === 'pong' && message.payload === this.pingSentAt) {
+      const rtt = performance.now() - this.pingSentAt;
+      if (rtt >= 0 && rtt < 10000) this.debug.rttMs = rtt;
+      return;
+    }
     if (message.type === 'closed') {
       void this.leave().then(() => this.onError('HOST_LEFT'));
       return;
@@ -300,6 +313,10 @@ export class NetworkSystem {
       this.hostId = message.from;
       this.receivedSequence = message.sequence!;
       this.state = snapshot;
+      if (this.lastSnapshotAt)
+        this.debug.snapshotIntervalMs = Date.now() - this.lastSnapshotAt;
+      this.debug.snapshots++;
+      this.remoteMotion.push(snapshot, performance.now());
       this.lastSnapshotAt = Date.now();
       this.onSnapshot(snapshot);
       if (this.status === 'CONNECTING') {
@@ -491,7 +508,8 @@ export class NetworkSystem {
           }
         }
       } else if (this.subscribed) {
-        void this.sendPeer('ping');
+        this.pingSentAt = performance.now();
+        void this.sendPeer('ping', this.pingSentAt);
       }
       if (
         !this.peerHost &&
@@ -560,6 +578,7 @@ export class NetworkSystem {
     clearInterval(this.peerWatchTimer);
     this.localGame = null;
     this.state = null;
+    this.remoteMotion.reset();
     if (channel && supabase)
       void supabase.removeChannel(channel).catch(() => {});
   }
@@ -626,6 +645,8 @@ export class NetworkSystem {
     this.lastInput.clear();
     this.inputSequence.clear();
     this.state = null;
+    this.remoteMotion.reset();
+    this.debug.rttMs = this.debug.snapshotIntervalMs = this.debug.snapshots = 0;
     this.setStatus('DISCONNECTED');
     if (wasActive) this.onDisconnect('');
   }

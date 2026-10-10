@@ -192,11 +192,20 @@ export class GameScene extends Phaser.Scene {
     this.stageRevision = s.stageRevision;
     this.lastGrid = signature;
   }
-  private actor(a: Actor, prefix: string, height: number, dt: number): void {
+  private actor(
+    a: Actor,
+    prefix: string,
+    height: number,
+    dt: number,
+    buffered = false,
+  ): void {
     const sprite = this.sprite(a.id, `${prefix}/idle_01`, a.x, a.y, height);
     const blend = 1 - Math.exp(-dt / 48);
     // Large corrections are respawns/transitions; normal movement is interpolated.
-    if (Math.hypot(sprite.x - px(a.x), sprite.y - (py(a.y) + 25)) > T * 3) {
+    if (
+      buffered ||
+      Math.hypot(sprite.x - px(a.x), sprite.y - (py(a.y) + 25)) > T * 3
+    ) {
       sprite.x = px(a.x);
       sprite.y = py(a.y) + 25;
     } else {
@@ -278,12 +287,16 @@ export class GameScene extends Phaser.Scene {
     }
     this.presentation.localId = network.id;
     this.presentation.update(s, _time);
+    network.remoteMotion.beginFrame(performance.now());
     const present = new Set<string>();
     for (const p of s.players) {
       present.add(p.id);
-      const renderPlayer = { ...p };
+      const local = p.id === network.id;
+      const renderPlayer = local
+        ? { ...p }
+        : (network.remoteMotion.sample(p.id) ?? p);
       if (
-        p.id === network.id &&
+        local &&
         p.alive &&
         s.phase === 'PLAYING' &&
         !s.paused &&
@@ -305,6 +318,7 @@ export class GameScene extends Phaser.Scene {
         `players/${p.color}`,
         105,
         p.id === network.id ? dt * 2 : dt,
+        !local,
       );
       const sprite = this.objects.get(p.id)!;
       if (p.alive && p.invulnerability > s.time)
