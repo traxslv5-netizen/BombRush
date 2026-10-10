@@ -17,6 +17,7 @@ export class GameScene extends Phaser.Scene {
   private effects: Phaser.GameObjects.Sprite[] = [];
   private eventId = 0;
   private stage = -1;
+  private stageRevision = -1;
   private lastGrid = '';
   private lastTick = -1;
   private warnings!: Phaser.GameObjects.Graphics;
@@ -39,7 +40,12 @@ export class GameScene extends Phaser.Scene {
     });
     Object.entries(manifest)
       .filter(([key]) => !key.startsWith('maps/') && !key.startsWith('hud/'))
-      .forEach(([key, url]) => this.load.image(key, `${import.meta.env.BASE_URL}${url.replace(/^\//, '')}`));
+      .forEach(([key, url]) =>
+        this.load.image(
+          key,
+          `${import.meta.env.BASE_URL}${url.replace(/^\//, '')}`,
+        ),
+      );
   }
   create(): void {
     registerAnimations(this, manifest);
@@ -98,8 +104,26 @@ export class GameScene extends Phaser.Scene {
   }
   private syncMap(s: Snapshot): void {
     const signature = JSON.stringify(s.grid);
-    if (this.stage === s.stage && signature === this.lastGrid) return;
-    if (this.stage !== s.stage) {
+    if (
+      this.stage === s.stage &&
+      this.stageRevision === s.stageRevision &&
+      signature === this.lastGrid
+    )
+      return;
+    if (this.stage !== s.stage || this.stageRevision !== s.stageRevision) {
+      this.inputSystem.reset();
+      this.effects.forEach((effect) => {
+        this.tweens.killTweensOf(effect);
+        effect.destroy();
+      });
+      this.effects = [];
+      this.projectilePool.forEach((effect) => effect.destroy());
+      this.projectilePool = [];
+      this.objects.forEach((object) => this.tweens.killTweensOf(object));
+      this.bombTicks.clear();
+      this.warnings.clear();
+      this.cameras.main.resetFX();
+      this.presentation.reset();
       for (const row of this.tiles) row.forEach((t) => t?.destroy());
       this.tiles = [];
       this.floors.forEach((f) => f.destroy());
@@ -165,6 +189,7 @@ export class GameScene extends Phaser.Scene {
       });
     });
     this.stage = s.stage;
+    this.stageRevision = s.stageRevision;
     this.lastGrid = signature;
   }
   private actor(a: Actor, prefix: string, height: number, dt: number): void {
@@ -223,15 +248,30 @@ export class GameScene extends Phaser.Scene {
       network.status !== 'CONNECTED';
     this.inputSystem.update(dt);
     const s = network.state;
-    if (!s || s.phase === 'LOBBY' || !s.grid.length) return;
+    if (!s || s.phase === 'LOBBY' || !s.grid.length) {
+      this.cameras.main.setVisible(false);
+      if (!s) {
+        this.roomCode = '';
+        this.stage = -1;
+        this.stageRevision = -1;
+        this.eventId = 0;
+        this.snapshotTime = -1;
+      }
+      return;
+    }
+    this.cameras.main.setVisible(true);
     if (this.roomCode !== s.code) {
       this.stage = -1;
+      this.stageRevision = -1;
       this.eventId = 0;
       this.roomCode = s.code;
       this.presentation.reset();
       this.bombTicks.clear();
     }
-    if (this.snapshotTime !== s.time || this.stage !== s.stage) {
+    if (
+      this.snapshotTime !== s.time ||
+      this.stageRevision !== s.stageRevision
+    ) {
       this.syncMap(s);
       this.snapshotTime = s.time;
       this.snapshotAt = performance.now();
@@ -245,6 +285,7 @@ export class GameScene extends Phaser.Scene {
       if (
         p.id === network.id &&
         p.alive &&
+        s.phase === 'PLAYING' &&
         !s.paused &&
         network.status === 'CONNECTED' &&
         !this.inputSystem.disabled
@@ -256,7 +297,7 @@ export class GameScene extends Phaser.Scene {
           input.dx,
           input.dy,
           p.speed,
-          Math.min(0.06, (performance.now() - this.snapshotAt) / 1000),
+          Math.min(0.14, (performance.now() - this.snapshotAt) / 1000),
         );
       }
       this.actor(
@@ -421,7 +462,6 @@ export class GameScene extends Phaser.Scene {
           audio.play(event.kind);
           if (event.kind === 'boss_death') {
             this.cameras.main.shake(350, 0.004);
-            this.cameras.main.flash(180, 255, 220, 140);
             for (let i = 0; i < 8; i++) {
               const angle = (i * Math.PI) / 4;
               this.effect(
@@ -434,15 +474,6 @@ export class GameScene extends Phaser.Scene {
           } else if (event.kind === 'explosion') {
             this.effect('smoke', event.x, event.y);
             this.cameras.main.shake(90, 0.0015);
-            this.cameras.main.flash(
-              45,
-              255,
-              218,
-              100,
-              false,
-              undefined,
-              undefined,
-            );
           } else if (
             [
               'block_break',
@@ -479,5 +510,6 @@ export class GameScene extends Phaser.Scene {
         }
       this.lastTick = s.time;
     }
+    network.stageReady(s.stageRevision);
   }
 }

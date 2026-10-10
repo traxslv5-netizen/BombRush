@@ -4,13 +4,10 @@ import { Game } from '../../../server/src/state/Game';
 import { supabase } from './SupabaseClient';
 
 export type ConnectionStatus =
-  | 'DISCONNECTED'
-  | 'CONNECTING'
-  | 'CONNECTED'
-  | 'RECONNECTING'
-  | 'ERROR';
+  'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'ERROR';
 
 type PeerMessage = {
+  sequence?: number;
   type: string;
   from: string;
   to?: string;
@@ -30,6 +27,7 @@ export class NetworkSystem {
   private channel: RealtimeChannel | null = null;
   private localGame: Game | null = null;
   private localTimer: ReturnType<typeof setInterval> | undefined;
+  private clock: Worker | undefined;
   private peerWatchTimer: ReturnType<typeof setInterval> | undefined;
   private localSessionId = '';
   private localTicks = 0;
@@ -38,6 +36,13 @@ export class NetworkSystem {
   private lastInput = new Map<string, number>();
   private inputSequence = new Map<string, number>();
   private lastSnapshotAt = 0;
+  private subscribed = false;
+  private hostId = '';
+  private roomCode = '';
+  private snapshotSequence = 0;
+  private receivedSequence = -1;
+  private lastSeen = new Map<string, number>();
+  private lastReadyAt = 0;
   private connectResolve: (() => void) | null = null;
   private connectReject: ((error: Error) => void) | null = null;
   private connectTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -73,15 +78,20 @@ export class NetworkSystem {
     }
 
     const roomCode = code?.trim().toUpperCase() || this.makeCode();
-    this.localSessionId = crypto.randomUUID();
+    this.roomCode = roomCode;
+    this.localSessionId =
+      (code && sessionStorage.getItem(`bombrush-peer:${roomCode}`)) ||
+      crypto.randomUUID();
+    sessionStorage.setItem(`bombrush-peer:${roomCode}`, this.localSessionId);
     this.peerHost = !code;
+    this.hostId = this.peerHost ? this.localSessionId : '';
 
     if (this.peerHost) {
       this.createPeerGame(nickname, color, roomCode);
     }
 
-    const channel = supabase.channel(`bombrush:${roomCode}`, {
-      config: { broadcast: { self: false, ack: true } },
+    const channel = supabase.channel(`bombrush:v2:${roomCode}`, {
+      config: { broadcast: { self: false, ack: false } },
     });
     this.channel = channel;
     channel.on('broadcast', { event: 'room' }, ({ payload }) => {
@@ -93,12 +103,18 @@ export class NetworkSystem {
       this.connectResolve = resolve;
       this.connectReject = reject;
       this.connectTimeout = setTimeout(() => {
-        this.failConnect('ROOM_NOT_FOUND');
+        this.failConnect(
+          this.subscribed && !this.peerHost
+            ? 'ROOM_NOT_FOUND'
+            : 'CONNECTION_ERROR',
+        );
       }, 10000);
 
       channel.subscribe((subscriptionStatus) => {
         if (this.channel !== channel) return;
         if (subscriptionStatus === 'SUBSCRIBED') {
+          this.subscribed = true;
+          this.startPeerWatch();
           if (this.peerHost) {
             this.startTicks();
             this.finishConnect();
@@ -106,28 +122,36 @@ export class NetworkSystem {
           } else {
             if (this.status === 'ERROR' || this.status === 'DISCONNECTED')
               this.setStatus('RECONNECTING');
-            void this.sendPeer('join', { nickname, color } satisfies JoinPayload);
+            void this.sendPeer('join', {
+              nickname,
+              color,
+            } satisfies JoinPayload);
           }
         } else if (
           subscriptionStatus === 'CHANNEL_ERROR' ||
           subscriptionStatus === 'TIMED_OUT'
         ) {
-          if (this.status === 'CONNECTING') this.failConnect('CONNECTION_ERROR');
+          this.subscribed = false;
+          if (this.status === 'CONNECTING')
+            this.failConnect('CONNECTION_ERROR');
           else if (!this.intentional) this.setStatus('RECONNECTING');
         } else if (
           subscriptionStatus === 'CLOSED' &&
           !this.intentional &&
           this.status === 'CONNECTED'
         ) {
-          this.state = null;
-          this.setStatus('DISCONNECTED');
-          this.onDisconnect('CONNECTION_LOST');
+          this.subscribed = false;
+          this.setStatus('RECONNECTING');
         }
       });
     });
   }
 
-  private startLocal(nickname: string, color: Color | undefined, code: string): void {
+  private startLocal(
+    nickname: string,
+    color: Color | undefined,
+    code: string,
+  ): void {
     this.localSessionId = `solo-${crypto.randomUUID()}`;
     const game = new Game();
     this.localGame = game;
@@ -147,6 +171,7 @@ export class NetworkSystem {
     const game = new Game();
     this.localGame = game;
     game.state.code = roomCode;
+    game.synchronizeStages = true;
     game.addPlayer(this.localSessionId, this.cleanNickname(nickname));
     if (color) game.setColor(this.localSessionId, color);
     this.lastInput.set(this.localSessionId, Date.now());
@@ -154,16 +179,45 @@ export class NetworkSystem {
 
   private startTicks(): void {
     clearInterval(this.localTimer);
+    this.clock?.terminate();
     this.localTicks = 0;
-    this.localTimer = setInterval(() => {
+    let lastTickAt = performance.now();
+    const tick = () => {
       const game = this.localGame;
       if (!game) return;
-      for (const [id, last] of this.lastInput) {
-        if (Date.now() - last > 400) game.inputs.delete(id);
+      if (this.peerHost && !this.subscribed) {
+        lastTickAt = performance.now();
+        return;
       }
-      game.tick(1 / 30);
-      if (++this.localTicks % 2 === 0) this.publishLocal(this.peerHost);
-    }, 1000 / 30);
+      for (const [id, last] of this.lastInput) {
+        if (Date.now() - last > 800) game.inputs.delete(id);
+      }
+      const previousRevision = game.state.stageRevision;
+      const previousPhase = game.state.phase;
+      const now = performance.now();
+      game.tick(Math.min(0.1, (now - lastTickAt) / 1000));
+      lastTickAt = now;
+      // Publish room changes even when a client is waiting to acknowledge a new map.
+      // Broadcast delivery is charged per subscriber. Keep four-player rooms
+      // within the free Realtime throughput while keeping two-player updates at 15Hz.
+      const snapshotEvery =
+        game.state.phase === 'LOBBY'
+          ? 30
+          : Math.max(2, game.state.players.length);
+      if (
+        ++this.localTicks % snapshotEvery === 0 ||
+        previousRevision !== game.state.stageRevision ||
+        previousPhase !== game.state.phase
+      )
+        this.publishLocal(this.peerHost);
+    };
+    if (typeof Worker !== 'undefined') {
+      this.clock = new Worker(
+        new URL('./SimulationClock.ts', import.meta.url),
+        { type: 'module' },
+      );
+      this.clock.onmessage = tick;
+    } else this.localTimer = setInterval(tick, 1000 / 30);
   }
 
   private publishLocal(broadcast = false): void {
@@ -174,6 +228,7 @@ export class NetworkSystem {
   }
 
   private receivePeer(message: PeerMessage): void {
+    if (this.intentional) return;
     if (message.to && message.to !== this.localSessionId) return;
 
     if (this.peerHost && this.localGame) {
@@ -181,7 +236,16 @@ export class NetworkSystem {
         this.acceptJoin(message);
         return;
       }
-      if (!this.localGame.state.players.some((p) => p.id === message.from)) return;
+      if (!this.localGame.state.players.some((p) => p.id === message.from))
+        return;
+      this.lastSeen.set(message.from, Date.now());
+      if (message.type === 'ping') {
+        const p = this.localGame.state.players.find(
+          (p) => p.id === message.from,
+        )!;
+        p.connected = true;
+        return;
+      }
       if (message.type === 'leave') {
         this.localGame.removePlayer(message.from);
         this.lastInput.delete(message.from);
@@ -193,9 +257,23 @@ export class NetworkSystem {
       return;
     }
 
+    if (this.hostId && message.from !== this.hostId) return;
+    if (message.type === 'closed') {
+      void this.leave().then(() => this.onError('HOST_LEFT'));
+      return;
+    }
     if (message.type === 'snapshot' && this.isSnapshot(message.payload)) {
       const snapshot = message.payload;
+      if (
+        snapshot.host !== message.from ||
+        snapshot.code !== this.roomCode ||
+        !Number.isInteger(message.sequence) ||
+        message.sequence! <= this.receivedSequence
+      )
+        return;
       if (!snapshot.players.some((p) => p.id === this.localSessionId)) return;
+      this.hostId = message.from;
+      this.receivedSequence = message.sequence!;
       this.state = snapshot;
       this.lastSnapshotAt = Date.now();
       this.onSnapshot(snapshot);
@@ -207,8 +285,10 @@ export class NetworkSystem {
       }
     } else if (message.type === 'error') {
       const code =
-        message.payload && typeof message.payload === 'object' &&
-        'code' in message.payload && typeof message.payload.code === 'string'
+        message.payload &&
+        typeof message.payload === 'object' &&
+        'code' in message.payload &&
+        typeof message.payload.code === 'string'
           ? message.payload.code
           : 'CONNECTION_ERROR';
       if (this.status === 'CONNECTING') this.failConnect(code);
@@ -219,6 +299,16 @@ export class NetworkSystem {
   private acceptJoin(message: PeerMessage): void {
     const game = this.localGame!;
     const payload = message.payload as Partial<JoinPayload> | undefined;
+    // A returning participant must be restored before the phase/full-room guards.
+    const existing = game.state.players.find((p) => p.id === message.from);
+    if (existing) {
+      existing.connected = true;
+      this.lastSeen.set(message.from, Date.now());
+      this.inputSequence.delete(message.from);
+      game.inputs.delete(message.from);
+      this.publishLocal(true);
+      return;
+    }
     if (game.state.phase !== 'LOBBY') {
       void this.sendPeer('error', { code: 'MATCH_STARTED' }, message.from);
       return;
@@ -227,16 +317,13 @@ export class NetworkSystem {
       void this.sendPeer('error', { code: 'ROOM_FULL' }, message.from);
       return;
     }
-    if (game.state.players.some((p) => p.id === message.from)) {
-      this.publishLocal(true);
-      return;
-    }
     const nickname = this.cleanNickname(payload?.nickname);
     game.addPlayer(message.from, nickname);
     if (payload?.color && COLORS.includes(payload.color)) {
       game.setColor(message.from, payload.color);
     }
     this.lastInput.set(message.from, Date.now());
+    this.lastSeen.set(message.from, Date.now());
     this.publishLocal(true);
   }
 
@@ -247,6 +334,7 @@ export class NetworkSystem {
 
     if (type === 'input' && this.validInput(payload)) {
       if (game.state.phase !== 'PLAYING') return;
+      if (payload.stageRevision !== game.state.stageRevision) return;
       const sequence = this.inputSequence.get(id) ?? -1;
       if (payload.seq <= sequence) return;
       this.inputSequence.set(id, payload.seq);
@@ -261,9 +349,18 @@ export class NetworkSystem {
       });
       return;
     }
+    if (type === 'stage-ready' && typeof payload === 'number') {
+      game.acknowledgeStage(id, payload);
+      this.publishLocal(this.peerHost);
+      return;
+    }
     if (type === 'color' && typeof payload === 'string') {
-      if (!COLORS.includes(payload as Color) || !game.setColor(id, payload as Color)) {
-        void this.sendPeer('error', { code: 'COLOR_UNAVAILABLE' }, id);
+      if (
+        !COLORS.includes(payload as Color) ||
+        !game.setColor(id, payload as Color)
+      ) {
+        if (id === this.localSessionId) this.onError('COLOR_UNAVAILABLE');
+        else void this.sendPeer('error', { code: 'COLOR_UNAVAILABLE' }, id);
       }
     } else if (type === 'ready' && player && game.state.phase === 'LOBBY') {
       player.ready = !player.ready;
@@ -311,7 +408,11 @@ export class NetworkSystem {
       'players' in payload &&
       Array.isArray(payload.players) &&
       'phase' in payload &&
-      typeof payload.phase === 'string',
+      typeof payload.phase === 'string' &&
+      'grid' in payload &&
+      Array.isArray(payload.grid) &&
+      'stageRevision' in payload &&
+      Number.isInteger(payload.stageRevision),
     );
   }
 
@@ -328,24 +429,50 @@ export class NetworkSystem {
 
   private cleanNickname(value: unknown): string {
     if (typeof value !== 'string') return 'Rush';
-    return value.replace(/[<>\x00-\x1f]/g, '').trim().slice(0, 16) || 'Rush';
+    return (
+      value
+        .replace(/[<>\x00-\x1f]/g, '')
+        .trim()
+        .slice(0, 16) || 'Rush'
+    );
   }
 
   private makeCode(): string {
     const bytes = crypto.getRandomValues(new Uint8Array(6));
     let code = 'BR-';
-    for (const byte of bytes) code += ROOM_ALPHABET[byte % ROOM_ALPHABET.length];
+    for (const byte of bytes)
+      code += ROOM_ALPHABET[byte % ROOM_ALPHABET.length];
     return code;
   }
 
   private startPeerWatch(): void {
     clearInterval(this.peerWatchTimer);
     this.peerWatchTimer = setInterval(() => {
+      if (this.peerHost && this.localGame) {
+        for (const p of [...this.localGame.state.players]) {
+          if (p.id === this.id) continue;
+          const elapsed = Date.now() - (this.lastSeen.get(p.id) || Date.now());
+          if (elapsed > 6000) {
+            p.connected = false;
+            this.localGame.inputs.delete(p.id);
+            this.localGame.acknowledgeStage(
+              p.id,
+              this.localGame.state.stageRevision,
+            );
+          }
+          if (elapsed > 30000 && this.localGame.state.phase === 'LOBBY') {
+            this.localGame.removePlayer(p.id);
+            this.lastSeen.delete(p.id);
+          }
+        }
+      } else if (this.subscribed) {
+        void this.sendPeer('ping');
+      }
       if (
         !this.peerHost &&
-        this.status === 'CONNECTED' &&
+        ['CONNECTED', 'RECONNECTING'].includes(this.status) &&
         this.lastSnapshotAt &&
-        Date.now() - this.lastSnapshotAt > 15000
+        Date.now() - this.lastSnapshotAt > 6000
       ) {
         this.setStatus('RECONNECTING');
         void this.sendPeer('join', {
@@ -353,17 +480,34 @@ export class NetworkSystem {
             this.state?.players.find((p) => p.id === this.localSessionId)
               ?.nickname || 'Rush',
         });
+        if (Date.now() - this.lastSnapshotAt > 30000)
+          void this.leave(true).then(() => this.onError('CONNECTION_LOST'));
       }
-    }, 3000);
+    }, 2000);
   }
 
-  private async sendPeer(type: string, payload?: unknown, to?: string): Promise<void> {
-    if (!this.channel) return;
-    await this.channel.send({
-      type: 'broadcast',
-      event: 'room',
-      payload: { type, from: this.localSessionId, to, payload } satisfies PeerMessage,
-    });
+  private async sendPeer(
+    type: string,
+    payload?: unknown,
+    to?: string,
+  ): Promise<void> {
+    // Never let the SDK turn a disconnected stream into many REST requests.
+    if (!this.channel || !this.subscribed) return;
+    try {
+      await this.channel.send({
+        type: 'broadcast',
+        event: 'room',
+        payload: {
+          type,
+          from: this.localSessionId,
+          to,
+          payload,
+          sequence: type === 'snapshot' ? ++this.snapshotSequence : undefined,
+        } satisfies PeerMessage,
+      });
+    } catch {
+      if (!this.intentional) this.setStatus('RECONNECTING');
+    }
   }
 
   private finishConnect(): void {
@@ -384,6 +528,17 @@ export class NetworkSystem {
     this.connectResolve = null;
     this.connectReject = null;
     reject?.(new Error(code));
+    const channel = this.channel;
+    this.channel = null;
+    this.subscribed = false;
+    clearInterval(this.localTimer);
+    clearInterval(this.peerWatchTimer);
+    this.clock?.terminate();
+    this.clock = undefined;
+    this.localGame = null;
+    this.state = null;
+    if (channel && supabase)
+      void supabase.removeChannel(channel).catch(() => {});
   }
 
   get id(): string {
@@ -401,34 +556,58 @@ export class NetworkSystem {
   input(input: Input): void {
     this.send('input', input);
   }
+  stageReady(revision: number): void {
+    if (
+      this.state?.phase !== 'SYNCING' ||
+      !this.state.pendingStagePlayers.includes(this.id)
+    )
+      return;
+    if (performance.now() - this.lastReadyAt < 250) return;
+    this.lastReadyAt = performance.now();
+    this.send('stage-ready', revision);
+  }
 
-  async leave(): Promise<void> {
+  async leave(preserveIdentity = false): Promise<void> {
+    const wasActive = this.state !== null;
     this.intentional = true;
     clearTimeout(this.connectTimeout);
     this.connectTimeout = undefined;
     clearInterval(this.localTimer);
     this.localTimer = undefined;
+    this.clock?.terminate();
+    this.clock = undefined;
     clearInterval(this.peerWatchTimer);
     this.peerWatchTimer = undefined;
     this.connectResolve = null;
+    this.connectReject?.(new Error('CONNECTION_CANCELLED'));
     this.connectReject = null;
 
     const channel = this.channel;
-    if (channel && !this.peerHost && this.localSessionId) {
-      await this.sendPeer('leave').catch(() => {});
+    if (channel && this.localSessionId) {
+      await this.sendPeer(this.peerHost ? 'closed' : 'leave');
     }
+    if (this.roomCode && !preserveIdentity)
+      sessionStorage.removeItem(`bombrush-peer:${this.roomCode}`);
     this.channel = null;
-    if (channel && supabase) await supabase.removeChannel(channel).catch(() => {});
+    if (channel && supabase)
+      await supabase.removeChannel(channel).catch(() => {});
 
     this.localGame = null;
     this.localSessionId = '';
     this.localTicks = 0;
     this.lastSnapshotAt = 0;
+    this.subscribed = false;
+    this.hostId = '';
+    this.roomCode = '';
+    this.receivedSequence = -1;
+    this.snapshotSequence = 0;
+    this.lastSeen.clear();
     this.peerHost = false;
     this.lastInput.clear();
     this.inputSequence.clear();
     this.state = null;
     this.setStatus('DISCONNECTED');
+    if (wasActive) this.onDisconnect('');
   }
 }
 

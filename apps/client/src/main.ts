@@ -14,5 +14,6 @@ new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [GameScene],
   audio: { noAudio: true },
+  input: { keyboard: false },
   fps: { target: 60 },
 });

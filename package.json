@@ -11,6 +11,7 @@
     "start": "node dist/server/index.js",
     "test": "vitest run",
     "test:browser": "node tools/browser-smoke.mjs",
+    "test:coop": "node tools/cooperative-browser.mjs",
     "test:visual": "node --import tsx tools/visual-review.mjs",
     "lint": "eslint .",
     "format": "prettier --write apps shared tools tests *.json *.ts *.md",

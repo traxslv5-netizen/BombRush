@@ -69,6 +69,56 @@ afterAll(async () => {
   );
   await server.gracefullyShutdown(false);
 });
+it('Colyseus authority waits for both map acknowledgements and advances each socket exactly once', async () => {
+  const client = new Client(`ws://127.0.0.1:${port}`);
+  const a = await client.create('bombrush', {
+    nickname: 'Authority',
+    synchronizedStages: true,
+  });
+  rooms.push(a);
+  const b = await client.joinById(a.roomId, { nickname: 'Peer' });
+  rooms.push(b);
+  const stageRevisions = [new Set<number>(), new Set<number>()];
+  [a, b].forEach((room, i) =>
+    room.onMessage('snapshot', (s: Snapshot) => {
+      if (s.phase === 'SYNCING') {
+        stageRevisions[i].add(s.stageRevision);
+        room.send('stage-ready', s.stageRevision);
+      }
+    }),
+  );
+  a.send('ready');
+  b.send('ready');
+  const lobby = await waitFor(a, (s) => s.players.every((p) => p.ready));
+  a.send('start');
+  await Promise.all(
+    [a, b].map((room) => waitFor(room, (s) => s.phase === 'PLAYING')),
+  );
+  const game = roomRegistry.get(lobby.code)!.game;
+  for (const point of game.state.objective.points) point.done = true;
+  for (const enemy of game.state.enemies) enemy.alive = false;
+  for (const p of game.state.players) {
+    p.x = game.state.exit.x;
+    p.y = game.state.exit.y;
+    p.invulnerability = game.state.time + 20;
+  }
+  const [sa, sb] = await Promise.all(
+    [a, b].map((room) =>
+      waitFor(room, (s) => s.stage === 1 && s.phase === 'PLAYING'),
+    ),
+  );
+  expect(sa.stageRevision).toBe(2);
+  expect(sb.stageRevision).toBe(2);
+  expect(sa.grid).toEqual(sb.grid);
+  expect(stageRevisions.map((revs) => [...revs])).toEqual([
+    [1, 2],
+    [1, 2],
+  ]);
+  await a.leave();
+  await b.leave();
+  rooms.splice(rooms.indexOf(a), 1);
+  rooms.splice(rooms.indexOf(b), 1);
+});
 function waitFor(
   room: Room,
   predicate: (s: Snapshot) => boolean,

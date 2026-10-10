@@ -77,13 +77,9 @@ try {
   await a.waitForTimeout(2000);
   await a.screenshot({ path: 'test-results/explosion.png' });
   const session = await b.evaluate(() => window.__testNetwork.id);
-  await b.evaluate(() =>
-    window.__testNetwork.room.connection.close(
-      4010,
-      'browser reconnection test',
-    ),
-  );
+  await b.evaluate(() => window.__testNetwork.channel.socket.disconnect());
   await b.waitForFunction(() => window.__testNetwork.status === 'RECONNECTING');
+  await b.evaluate(() => window.__testNetwork.channel.socket.connect());
   await b.waitForFunction(() => window.__testNetwork.status === 'CONNECTED');
   if ((await b.evaluate(() => window.__testNetwork.id)) !== session)
     throw new Error('Reconnection changed identity');

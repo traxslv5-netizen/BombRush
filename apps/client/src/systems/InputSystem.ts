@@ -1,88 +1,120 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import { network } from '../networking/NetworkSystem';
+import { gameplayFocused, isEditable } from './Focus';
+import { KeyboardState } from './KeyboardState';
+
 export class InputSystem {
-  private keys: Record<string, Phaser.Input.Keyboard.Key>;
+  private keyboard = new KeyboardState();
   private seq = 0;
-  private elapsed = 0;
+  private lastSent = 0;
+  private lastDirection = '';
   private padBomb = false;
   private padRemote = false;
-  private bombQueued = false;
-  private remoteQueued = false;
+  private blurred = false;
   disabled = false;
   direction = { dx: 0, dy: 0 };
   constructor(scene: Phaser.Scene) {
-    this.keys = scene.input.keyboard!.addKeys(
-      'W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,E',
-    ) as Record<string, Phaser.Input.Keyboard.Key>;
-    this.keys.SPACE.on('down', () => {
-      this.bombQueued = true;
-    });
-    this.keys.E.on('down', () => {
-      this.remoteQueued = true;
-    });
+    window.addEventListener('keydown', this.down);
+    window.addEventListener('keyup', this.up);
     window.addEventListener('blur', this.blur);
-    scene.events.once('shutdown', () =>
-      window.removeEventListener('blur', this.blur),
+    window.addEventListener('focus', this.focus);
+    document.addEventListener('focusin', this.focusIn);
+    document.addEventListener('visibilitychange', this.visibility);
+    scene.events.once('shutdown', () => {
+      this.reset();
+      window.removeEventListener('keydown', this.down);
+      window.removeEventListener('keyup', this.up);
+      window.removeEventListener('blur', this.blur);
+      window.removeEventListener('focus', this.focus);
+      document.removeEventListener('focusin', this.focusIn);
+      document.removeEventListener('visibilitychange', this.visibility);
+    });
+  }
+  private active(): boolean {
+    return (
+      !this.disabled &&
+      !this.blurred &&
+      gameplayFocused() &&
+      network.status === 'CONNECTED' &&
+      network.state?.phase === 'PLAYING'
     );
   }
-  private blur = () => {
-    Object.values(this.keys).forEach((k) => k.reset());
-    network.input({
-      dx: 0,
-      dy: 0,
-      bomb: false,
-      remote: false,
-      seq: ++this.seq,
-    });
-  };
-  update(dt: number): void {
-    this.elapsed += dt;
-    if (this.elapsed < 50) return;
-    this.elapsed = 0;
-    const k = this.keys,
-      pad = navigator.getGamepads?.()[0];
-    const ax = pad?.axes[0] ?? 0,
-      ay = pad?.axes[1] ?? 0;
-    let dx =
-      k.A.isDown || k.LEFT.isDown || ax < -0.35
-        ? -1
-        : k.D.isDown || k.RIGHT.isDown || ax > 0.35
-          ? 1
-          : 0;
-    let dy =
-      k.W.isDown || k.UP.isDown || ay < -0.35
-        ? -1
-        : k.S.isDown || k.DOWN.isDown || ay > 0.35
-          ? 1
-          : 0;
-    if (dx && dy) {
-      const latest = (names: string[]) =>
-        Math.max(
-          ...names.filter((n) => k[n].isDown).map((n) => k[n].timeDown),
-          0,
-        );
-      if (
-        latest(['W', 'UP', 'S', 'DOWN']) > latest(['A', 'LEFT', 'D', 'RIGHT'])
-      )
-        dx = 0;
-      else dy = 0;
+  private down = (event: KeyboardEvent) => {
+    if (isEditable(event.target) || event.isComposing || !this.active()) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      this.reset();
+      return;
     }
-    const pb = pad?.buttons[0]?.pressed ?? false,
-      pr = pad?.buttons[1]?.pressed ?? false;
-    const bomb = this.bombQueued || (pb && !this.padBomb),
-      remote = this.remoteQueued || (pr && !this.padRemote);
-    this.bombQueued = false;
-    this.remoteQueued = false;
+    if (!this.keyboard.accepts(event.code)) return;
+    event.preventDefault();
+    this.keyboard.down(event.code);
+    this.update(0);
+  };
+  private up = (event: KeyboardEvent) => {
+    this.keyboard.up(event.code);
+    if (this.active() && !isEditable(event.target)) this.update(0);
+  };
+  private blur = () => {
+    this.blurred = true;
+    this.reset();
+  };
+  private focus = () => {
+    this.blurred = false;
+  };
+  private focusIn = (event: FocusEvent) => {
+    if (isEditable(event.target)) this.reset();
+  };
+  private visibility = () => {
+    if (document.hidden) this.blur();
+    else this.focus();
+  };
+  reset(): void {
+    const wasMoving = this.direction.dx || this.direction.dy;
+    this.keyboard.clear();
+    this.direction = { dx: 0, dy: 0 };
+    this.lastDirection = '';
+    if (wasMoving && network.state?.phase === 'PLAYING')
+      this.transmit(false, false);
+  }
+  private transmit(bomb: boolean, remote: boolean): void {
+    network.input({
+      ...this.direction,
+      bomb,
+      remote,
+      seq: ++this.seq,
+      stageRevision: network.state?.stageRevision,
+    });
+    this.lastSent = performance.now();
+    this.lastDirection = `${this.direction.dx},${this.direction.dy}`;
+  }
+  update(_dt: number): void {
+    if (!this.active()) {
+      this.reset();
+      return;
+    }
+    const pad = navigator.getGamepads?.()[0];
+    const pb = pad?.buttons[0]?.pressed ?? false;
+    const pr = pad?.buttons[1]?.pressed ?? false;
+    this.direction = this.keyboard.direction();
+    if (!this.direction.dx && !this.direction.dy) {
+      const ax = pad?.axes[0] ?? 0,
+        ay = pad?.axes[1] ?? 0;
+      if (Math.abs(ax) > 0.35) this.direction.dx = Math.sign(ax);
+      else if (Math.abs(ay) > 0.35) this.direction.dy = Math.sign(ay);
+    }
+    const bomb = this.keyboard.bomb || (pb && !this.padBomb);
+    const remote = this.keyboard.remote || (pr && !this.padRemote);
+    this.keyboard.bomb = this.keyboard.remote = false;
     this.padBomb = pb;
     this.padRemote = pr;
-    this.direction = { dx: this.disabled ? 0 : dx, dy: this.disabled ? 0 : dy };
-    if (network.state?.phase === 'PLAYING')
-      network.input({
-        dx: this.disabled ? 0 : dx,
-        dy: this.disabled ? 0 : dy,
-        bomb: !this.disabled && bomb,
-        remote: !this.disabled && remote,
-        seq: ++this.seq,
-      });
+    // Changes/releases are immediate; only held movement needs a heartbeat.
+    if (
+      bomb ||
+      remote ||
+      this.lastDirection !== `${this.direction.dx},${this.direction.dy}` ||
+      ((this.direction.dx || this.direction.dy) &&
+        performance.now() - this.lastSent >= 250)
+    )
+      this.transmit(bomb, remote);
   }
 }

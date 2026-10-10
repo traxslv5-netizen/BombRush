@@ -14,7 +14,15 @@ export class BombRushRoom extends Room {
     string,
     { time: number; count: number; lastInput: number; seq: number }
   >();
-  async onCreate(): Promise<void> {
+  async onCreate(
+    options: { synchronizedStages?: boolean } = {},
+  ): Promise<void> {
+    this.game.synchronizeStages = options.synchronizedStages === true;
+    this.onMessage('stage-ready', (client, revision: unknown) => {
+      if (!this.accept(client) || typeof revision !== 'number') return;
+      this.game.acknowledgeStage(client.sessionId, revision);
+      this.publish();
+    });
     await this.setPrivate(true);
     let reserved = false;
     for (let attempt = 0; attempt < 12; attempt++) {
@@ -51,6 +59,11 @@ export class BombRushRoom extends Room {
       )
         return;
       const m = payload as Partial<Input>;
+      if (
+        m.stageRevision !== undefined &&
+        m.stageRevision !== this.game.state.stageRevision
+      )
+        return;
       if (
         !Number.isInteger(m.seq) ||
         ![-1, 0, 1].includes(m.dx as number) ||

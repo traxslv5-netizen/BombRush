@@ -1,7 +1,13 @@
 export type Color = 'red' | 'blue' | 'purple' | 'yellow';
 export type Direction = 'up' | 'down' | 'left' | 'right';
 export type Phase =
-  'LOBBY' | 'LOADING' | 'PLAYING' | 'STAGE_CLEAR' | 'GAME_OVER' | 'VICTORY';
+  | 'LOBBY'
+  | 'LOADING'
+  | 'SYNCING'
+  | 'PLAYING'
+  | 'STAGE_CLEAR'
+  | 'GAME_OVER'
+  | 'VICTORY';
 export type EnemyKind = 'slime' | 'windup' | 'fire_spirit' | 'ghost';
 export type ItemKind =
   'bomb_up' | 'fire_up' | 'speed_up' | 'kick' | 'remote' | 'shield';
@@ -15,6 +21,7 @@ export type Action =
   | 'attack1'
   | 'attack2';
 export interface Input {
+  stageRevision?: number;
   dx: number;
   dy: number;
   bomb: boolean;
@@ -160,6 +167,8 @@ export interface Hazard {
   changeAt: number;
 }
 export interface Snapshot {
+  stageRevision: number;
+  pendingStagePlayers: string[];
   phase: Phase;
   stage: number;
   stageName: string;

@@ -22,7 +22,10 @@ import { updateBoss } from '../systems/BossSystem';
 import { loadStage, updateStage } from '../systems/StageSystem';
 import { updateObjectives, updateHazards } from '../systems/ObjectiveSystem';
 export class Game {
+  synchronizeStages = false;
   state: Snapshot = {
+    stageRevision: 0,
+    pendingStagePlayers: [],
     phase: 'LOBBY',
     stage: 0,
     stageName: 'Garden Entry',
@@ -111,6 +114,7 @@ export class Game {
     return p;
   }
   removePlayer(id: string): void {
+    this.acknowledgeStage(id, this.state.stageRevision);
     this.state.players = this.state.players.filter((p) => p.id !== id);
     this.state.bombs = this.state.bombs.filter((b) => b.owner !== id);
     this.inputs.delete(id);
@@ -163,6 +167,18 @@ export class Game {
   }
   loadStage(index: number): void {
     loadStage(this, index);
+  }
+  acknowledgeStage(id: string, revision: number): void {
+    const s = this.state;
+    if (s.phase !== 'SYNCING' || revision !== s.stageRevision) return;
+    s.pendingStagePlayers = s.pendingStagePlayers.filter(
+      (pending) => pending !== id,
+    );
+    if (!s.pendingStagePlayers.length) {
+      s.phase = 'PLAYING';
+      s.transitionAt = 0;
+      for (const p of s.players) p.invulnerability = s.time + 2.5;
+    }
   }
   spawnEnemy(kind: EnemyKind, x: number, y: number): void {
     this.state.enemies.push({

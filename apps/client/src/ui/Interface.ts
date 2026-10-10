@@ -2,6 +2,7 @@ import { network, type ConnectionStatus } from '../networking/NetworkSystem';
 import { audio } from '../systems/AudioSystem';
 import { settings, setVolume, type Settings } from '../systems/Settings';
 import { svg } from './icons';
+import { isEditable } from '../systems/Focus';
 import { COLORS } from '../../../../shared/src/config/game.config';
 import { STAGES } from '../../../../shared/src/config/stages.config';
 import type { Color, Snapshot } from '../../../../shared/src/types';
@@ -21,7 +22,8 @@ const esc = (s: string) =>
         c
       ]!,
   );
-const icon = (name: string) => `<img src="${ASSET_BASE}game/items/${name}.png" alt=""/>`;
+const icon = (name: string) =>
+  `<img src="${ASSET_BASE}game/items/${name}.png" alt=""/>`;
 let screen = '',
   selected: Color = 'red',
   paused = false,
@@ -48,6 +50,8 @@ const messages: Record<string, string> = {
     'A conexão foi perdida. Você pode criar ou entrar em outra sala.',
   CONNECTION_ERROR:
     'O Supabase não respondeu. Aguarde alguns segundos e tente novamente.',
+  HOST_LEFT: 'O host encerrou a sala. Crie ou entre em uma nova aventura.',
+  CONNECTION_CANCELLED: 'Conexão cancelada.',
   AUTH_REQUIRED: 'Sua sessão expirou. Recarregue o jogo para entrar novamente.',
   AUTH_UNAVAILABLE:
     'Não foi possível criar sua sessão. Confira o acesso anônimo no Supabase.',
@@ -113,7 +117,8 @@ function bindColors(inLobby = false): void {
         const portrait = document.getElementById(
           'setup-portrait',
         ) as HTMLImageElement;
-        if (portrait) portrait.src = `${ASSET_BASE}game/players/${color}/idle_02.png`;
+        if (portrait)
+          portrait.src = `${ASSET_BASE}game/players/${color}/idle_02.png`;
       }
     }),
   );
@@ -261,10 +266,13 @@ function renderOverlay(s: Snapshot): void {
         ? 'A aventura está pausada.'
         : 'A partida continua para a sua turma.';
     action = `<button id="resume" class="primary">CONTINUAR ${svg('play')}</button><button id="pause-settings" class="secondary">CONFIGURAÇÕES</button><button id="exit-game" class="quiet">SAIR DA SALA</button>`;
-  } else if (s.phase === 'LOADING') {
+  } else if (s.phase === 'LOADING' || s.phase === 'SYNCING') {
     kicker = 'PRÓXIMA PARADA';
-    title = 'Garden Entry';
-    sub = STAGES[0].objective.description;
+    title = s.stageName;
+    sub =
+      s.phase === 'SYNCING'
+        ? 'Sincronizando a arena com a turma…'
+        : STAGES[s.stage].objective.description;
   } else if (s.phase === 'STAGE_CLEAR') {
     kicker = 'STAGE COMPLETE';
     title =
@@ -473,6 +481,12 @@ function connection(value: ConnectionStatus): void {
   }
 }
 window.addEventListener('keydown', (e) => {
+  if (
+    isEditable(e.target) ||
+    isEditable(document.activeElement) ||
+    e.isComposing
+  )
+    return;
   if (e.code === 'Escape') {
     e.preventDefault();
     const settings = document.getElementById('settings-dialog');

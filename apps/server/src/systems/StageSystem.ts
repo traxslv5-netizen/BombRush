@@ -33,6 +33,12 @@ export function loadStage(game: Game, index: number): void {
   const s = game.state,
     c = STAGES[index];
   s.stage = index;
+  s.stageRevision++;
+  s.pendingStagePlayers = [];
+  s.events = [];
+  game.inputs.clear();
+  game.bombCooldown.clear();
+  game.remoteCooldown.clear();
   s.stageName = c.name;
   s.theme = c.theme;
   s.grid = c.rows.map((row) =>
@@ -96,6 +102,10 @@ export function loadStage(game: Game, index: number): void {
   }));
   s.players.forEach((p, i) => {
     Object.assign(p, c.spawns[i], {
+      gridX: c.spawns[i].x,
+      gridY: c.spawns[i].y,
+      direction: 'down',
+      actionUntil: 0,
       alive: true,
       lives: Math.max(1, p.lives),
       activeBombs: 0,
@@ -164,9 +174,30 @@ export function loadStage(game: Game, index: number): void {
     s.items.push({ id: game.id('item'), kind, x, y: spawn.y });
   });
   game.event('stage_start', c.spawns[0].x, c.spawns[0].y);
+  if (game.synchronizeStages) {
+    s.pendingStagePlayers = s.players
+      .filter((p) => p.connected)
+      .map((p) => p.id);
+    if (s.pendingStagePlayers.length) {
+      s.phase = 'SYNCING';
+      s.transitionAt = s.time + 15;
+    }
+  }
 }
 export function updateStage(game: Game, dt: number): void {
   const s = game.state;
+  if (s.phase === 'SYNCING') {
+    if (s.time >= s.transitionAt) {
+      for (const id of [...s.pendingStagePlayers]) {
+        const p = s.players.find((p) => p.id === id);
+        // The authority may be in a background tab with rendering suspended;
+        // its transport is still alive, so do not disable its input permanently.
+        if (p && id !== s.host) p.connected = false;
+        game.acknowledgeStage(id, s.stageRevision);
+      }
+    }
+    return;
+  }
   if (s.phase === 'LOADING' && s.time >= s.transitionAt) {
     loadStage(game, 0);
     return;
